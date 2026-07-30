@@ -47,4 +47,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </form>
 <p class="login-info"><a href="index.php">Back to Login</a></p>
 </div></div>
+<script src="assets/js/Lms.js"></script>
 </body></html>

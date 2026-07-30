@@ -9,10 +9,14 @@ function callExternalAuthApi(string $url, array $credentials): array {
         CURLOPT_TIMEOUT => 10
     ]);
     $result = curl_exec($ch);
+
+    // The handle closes itself when it goes out of scope. curl_close() is
+    // deprecated on newer PHP versions and would print a notice mid-page.
     if ($result === false) {
-        curl_close($ch);
+        unset($ch);
         return ['status' => 'error', 'message' => 'Service unavailable, try again.'];
     }
-    curl_close($ch);
+
+    unset($ch);
     return json_decode($result, true) ?? ['status' => 'error', 'message' => 'Invalid API response.'];
 }

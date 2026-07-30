@@ -1,0 +1,3 @@
+# Uploaded lecture files belong to a running installation, not to the repository.
+uploads/*
+!uploads/.htaccess

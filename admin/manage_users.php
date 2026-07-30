@@ -3,11 +3,16 @@ require_once __DIR__ . '/../includes/db_connect.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 requireRole('admin');
+requireCsrf();
 
 $panel = $_GET['panel'] ?? '';
 $editingUser = null;
 $error = '';
 $success = '';
+
+// Defaults so the page still renders if a query below cannot run.
+$users = [];
+$classes = [];
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -120,7 +125,19 @@ try {
             exit;
         }
     }
+} catch (PDOException $e) {
+    if ((int)$e->errorInfo[1] === 1062) {
+        $error = 'That email or administrator/instructor number is already registered.';
+    } else {
+        $error = 'The user could not be saved.';
+    }
+} catch (RuntimeException $e) {
+    $error = $e->getMessage();
+}
 
+// The lists below load in their own try block. If a POST above failed, the page
+// still needs its users, classes and dropdowns to render.
+try {
     if (isset($_GET['edit'])) {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
         $stmt->execute([(int)$_GET['edit']]);
@@ -147,13 +164,7 @@ try {
         $success = $messages[$_GET['success']];
     }
 } catch (PDOException $e) {
-    if ((int)$e->errorInfo[1] === 1062) {
-        $error = 'That email or administrator/instructor number is already registered.';
-    } else {
-        $error = 'The user could not be saved.';
-    }
-} catch (RuntimeException $e) {
-    $error = $e->getMessage();
+    $error = $error ?: 'The user list could not be loaded.';
 }
 
 $pageTitle = 'Manage Users';
@@ -189,7 +200,7 @@ require __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <form method="POST">
+    <form method="POST"><?= csrfField() ?>
         <input type="hidden" name="action" value="<?= $editingUser ? 'update_user' : 'create_user' ?>">
         <?php if ($editingUser): ?>
             <input type="hidden" name="user_id" value="<?= (int)$editingUser['user_id'] ?>">
@@ -283,7 +294,7 @@ require __DIR__ . '/../includes/header.php';
                     <td>
                         <div class="table-actions">
                             <a class="btn btn-outline btn-small" href="manage_users.php?edit=<?= (int)$user['user_id'] ?>">Edit</a>
-                            <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this user? This cannot be undone.');">
+                            <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this user? This cannot be undone.');"><?= csrfField() ?>
                                 <input type="hidden" name="action" value="delete_user">
                                 <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
                                 <button class="btn btn-danger btn-small" type="submit">Delete</button>

@@ -110,11 +110,12 @@ CREATE TABLE progress (
 INSERT INTO classes (class_name) VALUES ('Class A'), ('Class B');
 
 -- Change this password after installation.
+-- Hash below is password_hash('password', PASSWORD_DEFAULT) and verifies correctly.
 INSERT INTO users
 (role, name, surname, email, password_hash, admin_number)
 VALUES
 ('admin', 'System', 'Administrator', 'admin@edulearn.local',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC8T4mGxW3Yv1v9k7y6W',
+ '$2y$12$fJ6ROO0PNNOOu1A8J.t/1uqSGsr/yCQZ8UWsHmfRugq7e8hurnxBW',
  'ADMIN001');
 USE edulearn;
 

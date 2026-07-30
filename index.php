@@ -2,6 +2,7 @@
 
 require_once 'includes/db_connect.php';
 require_once 'includes/auth.php';
+require_once 'api_proxy/auth_api.php';
 
 if (isLoggedIn()) {
     redirectByRole(currentUserRole());
@@ -19,6 +20,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter your login details.';
 
     } else {
+
+        // Step 1: authenticate through the REST API endpoint.
+        // The host is fixed to the loopback address on purpose: building it from
+        // the Host header would let a visitor point authentication at their own
+        // server and have it answer "success".
+        $apiUrl = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? '80')
+            . rtrim(dirname($_SERVER['PHP_SELF']), '/')
+            . '/api_proxy/auth_endpoint.php';
+
+        $apiResult = callExternalAuthApi($apiUrl, [
+            'login' => $login,
+            'password' => $password
+        ]);
+
+        if (($apiResult['status'] ?? '') === 'success') {
+
+            session_regenerate_id(true);
+
+            $_SESSION['user_id'] = $apiResult['user_id'];
+            $_SESSION['role'] = $apiResult['role'];
+            $_SESSION['name'] = $apiResult['name'];
+            $_SESSION['email'] = $apiResult['email'];
+            $_SESSION['api_token'] = $apiResult['token'] ?? null;
+
+            redirectByRole($apiResult['role']);
+
+        } elseif (($apiResult['status'] ?? '') === 'fail') {
+
+            $error = $apiResult['message'] ?? 'Invalid login details.';
+
+        } else {
+
+            // Step 2: the API is unreachable - verify locally so nobody is locked out.
 
         try {
 
@@ -58,6 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
 
             $error = 'A system error occurred. Please try again.';
+        }
+
         }
     }
 }
