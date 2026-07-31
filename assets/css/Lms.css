@@ -478,3 +478,17 @@ tr:hover td { background: var(--surface-soft); }
     color: var(--primary);
     font-size: 10px;
 }
+
+/* Classes referenced by the pages that were missing from the stylesheet. */
+.success-message { padding: 10px 12px; border-radius: 7px; background: #e3f2e9; color: var(--success); }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.badge-admin { background: var(--accent-soft); color: var(--primary); }
+.badge-instructor { background: #e8eef5; color: var(--info); }
+.badge-learner { background: #e3f2e9; color: var(--success); }
+
+/* Login page: the markup uses .logo-icon and .login-footer, so the values
+   already chosen for .login-logo i / .login-info / .register-link are bound
+   to the classes that actually exist. */
+.login-logo .logo-icon { font-size: 30px; line-height: 1; }
+.login-footer { margin: 18px 0 8px; font-size: 12px; }
+.login-footer a { color: var(--primary); font-weight: 700; }

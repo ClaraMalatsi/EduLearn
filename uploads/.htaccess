@@ -1,1 +1,13 @@
 Options -Indexes
+
+# Uploaded lecture files are never served straight from this folder.
+# Every download goes through download.php, which first checks that the person
+# asking is an admin, the instructor of the course, or a learner enrolled in it.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

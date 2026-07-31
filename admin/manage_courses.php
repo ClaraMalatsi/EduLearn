@@ -3,11 +3,20 @@ require_once __DIR__ . '/../includes/db_connect.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 requireRole('admin');
+requireCsrf();
 
 $panel = $_GET['panel'] ?? '';
 $editingCourse = null;
 $error = '';
 $success = '';
+
+// Defaults so the page still renders if a query below cannot run.
+$courses = [];
+$classes = [];
+$instructors = [];
+$learners = [];
+$assignments = [];
+$enrollments = [];
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -127,6 +136,15 @@ try {
         if ($action === 'remove_enrollment') {
             $enrollmentId = (int)($_POST['enrollment_id'] ?? 0);
             if ($enrollmentId > 0) {
+                // Clear the progress row too, otherwise the old percentage would
+                // reappear if the learner is enrolled in the course again later.
+                $stmt = $pdo->prepare(
+                    "DELETE p FROM progress p
+                     JOIN enrollments e ON e.user_id = p.user_id AND e.course_id = p.course_id
+                     WHERE e.enrollment_id = ?"
+                );
+                $stmt->execute([$enrollmentId]);
+
                 $stmt = $pdo->prepare("DELETE FROM enrollments WHERE enrollment_id = ?");
                 $stmt->execute([$enrollmentId]);
             }
@@ -134,7 +152,19 @@ try {
             exit;
         }
     }
+} catch (PDOException $e) {
+    if ((int)$e->errorInfo[1] === 1062) {
+        $error = 'That assignment or enrollment already exists.';
+    } else {
+        $error = 'The requested action could not be completed.';
+    }
+} catch (RuntimeException $e) {
+    $error = $e->getMessage();
+}
 
+// The lists below load in their own try block, so a failed POST above still
+// leaves the course/class/instructor dropdowns and tables populated.
+try {
     if (isset($_GET['edit'])) {
         $stmt = $pdo->prepare("SELECT * FROM courses WHERE course_id = ?");
         $stmt->execute([(int)$_GET['edit']]);
@@ -203,13 +233,7 @@ try {
         $success = $successMessages[$_GET['success']];
     }
 } catch (PDOException $e) {
-    if ((int)$e->errorInfo[1] === 1062) {
-        $error = 'That assignment or enrollment already exists.';
-    } else {
-        $error = 'The requested action could not be completed.';
-    }
-} catch (RuntimeException $e) {
-    $error = $e->getMessage();
+    $error = $error ?: 'The course information could not be loaded.';
 }
 
 $pageTitle = 'Manage Courses';
@@ -256,7 +280,7 @@ require __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <form method="POST">
+    <form method="POST"><?= csrfField() ?>
         <input type="hidden" name="action" value="<?= $editingCourse ? 'update_course' : 'create_course' ?>">
         <?php if ($editingCourse): ?>
             <input type="hidden" name="course_id" value="<?= (int)$editingCourse['course_id'] ?>">
@@ -295,7 +319,7 @@ require __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <form method="POST">
+    <form method="POST"><?= csrfField() ?>
         <input type="hidden" name="action" value="assign_instructor">
 
         <div class="form-grid">
@@ -358,7 +382,7 @@ require __DIR__ . '/../includes/header.php';
                         <td><?= e($assignment['class_name']) ?></td>
                         <td><?= e($assignment['name'] . ' ' . $assignment['surname']) ?></td>
                         <td>
-                            <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this course? All related assignments, enrollments, quizzes and progress may be removed.');">
+                            <form method="POST" class="inline-form" onsubmit="return confirm('Remove this instructor from the course? The course itself is not deleted.');"><?= csrfField() ?>
                                 <input type="hidden" name="action" value="remove_assignment">
                                 <input type="hidden" name="assignment_id" value="<?= (int)$assignment['assignment_id'] ?>">
                                 <button class="btn btn-danger btn-small" type="submit">Remove</button>
@@ -382,7 +406,7 @@ require __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <form method="POST">
+    <form method="POST"><?= csrfField() ?>
         <input type="hidden" name="action" value="enroll_learner">
 
         <div class="form-grid">
@@ -449,7 +473,7 @@ require __DIR__ . '/../includes/header.php';
                         <td><?= e($enrollment['class_name']) ?></td>
                         <td><?= e($enrollment['percentage']) ?>%</td>
                         <td>
-                            <form method="POST" class="inline-form">
+                            <form method="POST" class="inline-form" onsubmit="return confirm('Remove this learner from the course? Their progress for it is cleared.');"><?= csrfField() ?>
                                 <input type="hidden" name="action" value="remove_enrollment">
                                 <input type="hidden" name="enrollment_id" value="<?= (int)$enrollment['enrollment_id'] ?>">
                                 <button class="btn btn-danger btn-small" type="submit">Remove</button>
@@ -493,7 +517,7 @@ require __DIR__ . '/../includes/header.php';
                                 <a class="btn btn-outline btn-small" href="manage_courses.php?edit=<?= (int)$course['course_id'] ?>">
                                     Edit
                                 </a>
-                                <form method="POST" class="inline-form">
+                                <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this course? All related assignments, enrollments, quizzes and progress may be removed.');"><?= csrfField() ?>
                                     <input type="hidden" name="action" value="delete_course">
                                     <input type="hidden" name="course_id" value="<?= (int)$course['course_id'] ?>">
                                     <button class="btn btn-danger btn-small" type="submit">Delete</button>

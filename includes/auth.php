@@ -133,6 +133,45 @@ function requireRole($requiredRole)
 }
 
 /**
+ * Return the CSRF token for this session, creating it on first use.
+ */
+function csrfToken()
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Hidden input placed inside every form that changes data.
+ */
+function csrfField()
+{
+    return '<input type="hidden" name="csrf_token" value="' . e(csrfToken()) . '">';
+}
+
+/**
+ * Reject a POST that did not come from one of our own forms.
+ * This stops another website from making a signed-in user submit actions
+ * such as creating an administrator or deleting a course.
+ */
+function requireCsrf()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return;
+    }
+
+    $sent = $_POST['csrf_token'] ?? '';
+
+    if (!is_string($sent) || !hash_equals(csrfToken(), $sent)) {
+        http_response_code(400);
+        exit('Your session has expired or the request could not be verified. Please go back and try again.');
+    }
+}
+
+/**
  * Log out user.
  */
 function logoutUser()

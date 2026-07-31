@@ -3,10 +3,15 @@ require_once __DIR__ . '/../includes/db_connect.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 requireRole('instructor');
+requireCsrf();
 
 $panel = $_GET['panel'] ?? '';
 $error = '';
 $success = '';
+
+// Defaults so the page still renders if a query below cannot run.
+$courses = [];
+$quizzes = [];
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -53,9 +58,19 @@ try {
             exit;
         }
     }
+} catch (PDOException $e) {
+    $error = 'The quiz could not be saved.';
+} catch (RuntimeException $e) {
+    $error = $e->getMessage();
+}
 
+// The lists below load in their own try block so a failed POST above still
+// leaves the course dropdown and quiz table populated.
+try {
+    // DISTINCT: a course assigned to more than one class would otherwise appear
+    // once per assignment in the dropdown and in the counts.
     $stmt = $pdo->prepare(
-        "SELECT c.*
+        "SELECT DISTINCT c.*
          FROM courses c
          JOIN course_assignments ca ON c.course_id = ca.course_id
          WHERE ca.instructor_id = ?
@@ -83,9 +98,7 @@ try {
         $success = $successMessages[$_GET['success']];
     }
 } catch (PDOException $e) {
-    $error = 'The quiz could not be saved.';
-} catch (RuntimeException $e) {
-    $error = $e->getMessage();
+    $error = $error ?: 'Your quizzes could not be loaded.';
 }
 
 $pageTitle = 'Manage Quizzes';
@@ -124,7 +137,7 @@ require __DIR__ . '/../includes/header.php';
     <?php if (!$courses): ?>
         <div class="alert alert-warning">No courses are currently assigned to you.</div>
     <?php else: ?>
-        <form method="POST">
+        <form method="POST"><?= csrfField() ?>
             <input type="hidden" name="action" value="create_quiz">
 
             <div class="form-grid">
@@ -178,7 +191,7 @@ require __DIR__ . '/../includes/header.php';
                         <td><?= e($quiz['course_name']) ?></td>
                         <td><?= e($quiz['created_at']) ?></td>
                         <td><a class="btn btn-outline btn-small" href="manage_questions.php?quiz_id=<?= (int)$quiz['quiz_id'] ?>">Questions</a> 
-                            <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this quiz and its questions?');">
+                            <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this quiz and its questions?');"><?= csrfField() ?>
                                 <input type="hidden" name="action" value="delete_quiz">
                                 <input type="hidden" name="quiz_id" value="<?= (int)$quiz['quiz_id'] ?>">
                                 <button class="btn btn-danger btn-small" type="submit">Delete</button>

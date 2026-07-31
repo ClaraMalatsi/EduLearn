@@ -22,7 +22,12 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM quiz_attempts WHERE user_id = ?");
 $stmt->execute([$userId]);
 $attemptCount = (int)$stmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT COALESCE(AVG(percentage),0) FROM progress WHERE user_id = ?");
+// Averaged over enrolled courses only, so progress from a course the learner
+// was removed from cannot skew the figure.
+$stmt = $pdo->prepare("SELECT COALESCE(AVG(p.percentage),0)
+    FROM progress p
+    JOIN enrollments e ON e.user_id = p.user_id AND e.course_id = p.course_id
+    WHERE p.user_id = ?");
 $stmt->execute([$userId]);
 $averageProgress = round((float)$stmt->fetchColumn(), 1);
 
@@ -175,6 +180,13 @@ require __DIR__ . '/../includes/header.php';
                     <?php endif; ?>
 
                     <div class="course-actions">
+                        <strong><i class="fa-solid fa-file-lines"></i> Learning Material</strong>
+                        <a class="btn btn-primary btn-small" href="view_lectures.php?course_id=<?= (int)$course['course_id'] ?>">
+                            Open Lectures
+                        </a>
+                    </div>
+
+                    <div class="course-actions">
                         <strong><i class="fa-solid fa-circle-question"></i> Quizzes</strong>
                         <?php if (!$quizzes): ?>
                             <span class="text-muted">No quizzes available yet.</span>
@@ -194,5 +206,17 @@ require __DIR__ . '/../includes/header.php';
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
+
+<section class="dashboard-card" id="quoteCard" data-api="../api_proxy/quote_api.php">
+    <div class="card-header">
+        <div>
+            <h2>Daily Motivation</h2>
+            <p class="text-muted">Read live from a free public quotes API.</p>
+        </div>
+        <i class="fa-solid fa-quote-left"></i>
+    </div>
+    <p id="quoteText">Loading today's quote...</p>
+    <p class="text-muted" id="quoteAuthor"></p>
+</section>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>
