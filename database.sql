@@ -1,12 +1,12 @@
 CREATE DATABASE IF NOT EXISTS edulearn CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE edulearn;
 
-CREATE TABLE classes (
+CREATE TABLE IF NOT EXISTS classes (
     class_id INT AUTO_INCREMENT PRIMARY KEY,
     class_name VARCHAR(100) NOT NULL UNIQUE
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     role ENUM('admin','instructor','learner') NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE users (
     FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE SET NULL
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     course_id INT AUTO_INCREMENT PRIMARY KEY,
     course_name VARCHAR(200) NOT NULL,
     description TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE courses (
     FOREIGN KEY (created_by_admin_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
-CREATE TABLE course_assignments (
+CREATE TABLE IF NOT EXISTS course_assignments (
     assignment_id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
     class_id INT NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE course_assignments (
     FOREIGN KEY (instructor_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE TABLE enrollments (
+CREATE TABLE IF NOT EXISTS enrollments (
     enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     course_id INT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE enrollments (
     FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE SET NULL
 );
 
-CREATE TABLE lectures (
+CREATE TABLE IF NOT EXISTS lectures (
     lecture_id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
     lecture_name VARCHAR(200) NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE lectures (
     FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE
 );
 
-CREATE TABLE quizzes (
+CREATE TABLE IF NOT EXISTS quizzes (
     quiz_id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
     title VARCHAR(200) NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE quizzes (
     FOREIGN KEY (created_by_instructor_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE TABLE questions (
+CREATE TABLE IF NOT EXISTS questions (
     question_id INT AUTO_INCREMENT PRIMARY KEY,
     quiz_id INT NOT NULL,
     question_text TEXT NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE questions (
     FOREIGN KEY (quiz_id) REFERENCES quizzes(quiz_id) ON DELETE CASCADE
 );
 
-CREATE TABLE quiz_attempts (
+CREATE TABLE IF NOT EXISTS quiz_attempts (
     attempt_id INT AUTO_INCREMENT PRIMARY KEY,
     quiz_id INT NOT NULL,
     user_id INT NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE quiz_attempts (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE TABLE progress (
+CREATE TABLE IF NOT EXISTS progress (
     progress_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     course_id INT NOT NULL,
@@ -107,16 +107,24 @@ CREATE TABLE progress (
     FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE
 );
 
-INSERT INTO classes (class_name) VALUES ('Class A'), ('Class B');
+INSERT IGNORE INTO classes (class_name) VALUES ('Class A'), ('Class B');
 
+-- The default administrator.
+-- Sign in with admin number ADMIN001 and the password: password
 -- Change this password after installation.
--- Hash below is password_hash('password', PASSWORD_DEFAULT) and verifies correctly.
+--
+-- The hash below is password_hash('password', PASSWORD_DEFAULT) and verifies
+-- correctly. ON DUPLICATE KEY UPDATE means that importing this file again on an
+-- existing database repairs the administrator sign-in instead of doing nothing,
+-- which is what you want if the password is ever lost or was set from an older
+-- copy of this file.
 INSERT INTO users
 (role, name, surname, email, password_hash, admin_number)
 VALUES
 ('admin', 'System', 'Administrator', 'admin@edulearn.local',
  '$2y$12$fJ6ROO0PNNOOu1A8J.t/1uqSGsr/yCQZ8UWsHmfRugq7e8hurnxBW',
- 'ADMIN001');
+ 'ADMIN001')
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash);
 USE edulearn;
 
 CREATE TABLE IF NOT EXISTS quiz_answers (
